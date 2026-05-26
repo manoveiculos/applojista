@@ -53,7 +53,7 @@ export default function ManosVeiculosAcessoPage() {
             <div>
               <h2 className="text-xl font-black text-white">Validando Acesso</h2>
               <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
-                Conectando ao canal seguro da Manos Veículos...
+                Conectando ao canal seguro da equipe...
               </p>
             </div>
           </>
@@ -95,7 +95,7 @@ export default function ManosVeiculosAcessoPage() {
 
       {/* Footer */}
       <div className="mt-8 text-center text-[10px] text-zinc-650 z-10">
-        Manos Veículos &copy; 2026. Acesso Seguro de Engenharia.
+        Todos os direitos reservados a drivvoo &copy; 2026. Acesso Seguro de Engenharia.
       </div>
     </div>
   );

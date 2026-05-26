@@ -179,6 +179,10 @@ export default function PortalLoginPage() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      
+      {/* Imagem de Fundo de Veículo Premium */}
+      <div className="absolute inset-0 bg-[url('/images/bg_vehicle.png')] bg-cover bg-center opacity-[0.05] mix-blend-screen pointer-events-none" />
+
       {/* Elementos visuais de fundo */}
       <div className="absolute top-[-10%] left-[-15%] w-[60%] h-[60%] rounded-full bg-red-950/15 blur-[160px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-15%] w-[60%] h-[60%] rounded-full bg-zinc-900/20 blur-[160px] pointer-events-none" />
@@ -356,8 +360,8 @@ export default function PortalLoginPage() {
         </div>
 
         {/* Footer */}
-        <div className="mt-8 text-center text-[10px] text-zinc-600 select-none">
-          Manos Veículos &copy; 2026. Todos os direitos reservados.
+        <div className="mt-8 text-center text-[10px] text-zinc-650 select-none">
+          Todos os direitos reservados a drivvoo &copy; 2026.
         </div>
 
       </div>

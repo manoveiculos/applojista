@@ -392,7 +392,7 @@ export default function AvaliacaoPage() {
             </Link>
             <span className="text-zinc-800">|</span>
             <Link href="/facebook" className="text-zinc-400 hover:text-white transition-colors">
-              Exclusivas Manos
+              Exclusivas Drivvoo
             </Link>
 
             <span className="text-zinc-800">|</span>

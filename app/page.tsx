@@ -178,6 +178,9 @@ export default function Home() {
   return (
     <div className="flex-1 flex flex-col justify-center bg-black text-zinc-100 relative overflow-hidden font-sans">
       
+      {/* Imagem de Fundo de Veículo Premium */}
+      <div className="absolute inset-0 bg-[url('/images/bg_vehicle.png')] bg-cover bg-center opacity-[0.06] mix-blend-screen pointer-events-none" />
+
       {/* Luzes de fundo / Gradients decorativos */}
       <div className="absolute top-[-10%] left-[-15%] w-[60%] h-[60%] rounded-full bg-red-950/15 blur-[160px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-15%] w-[60%] h-[60%] rounded-full bg-zinc-900/10 blur-[160px] pointer-events-none" />
@@ -185,11 +188,6 @@ export default function Home() {
       {/* Main Content */}
       <main className="flex-1 w-full max-w-6xl mx-auto px-6 py-16 flex flex-col items-center gap-16 z-10">
         
-        {/* Badge superior */}
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-900/60 border border-zinc-800 text-[10px] font-bold tracking-wider text-zinc-350 uppercase select-none">
-          <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse-soft" /> Módulos de Inteligência Artificial Ativos
-        </div>
-
         {/* Hero Title */}
         <div className="flex flex-col items-center gap-5 text-center max-w-4xl">
           <h1 className="text-5xl sm:text-7xl font-black tracking-tight text-white leading-none">
@@ -241,7 +239,7 @@ export default function Home() {
                 <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full blur-xl pointer-events-none" />
                 <Lock className="w-6 h-6 text-blue-400 group-hover:scale-110 transition-transform" />
                 <div>
-                  <span className="block text-white text-sm font-extrabold">Exclusivas Manos</span>
+                  <span className="block text-white text-sm font-extrabold">Exclusivas Drivvoo</span>
                   <span className="block text-[10px] text-zinc-500 font-medium mt-0.5">Captações diretas de clientes (Equipe)</span>
                 </div>
               </Link>
@@ -415,7 +413,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-zinc-950 py-8 text-center text-xs text-zinc-650 z-10">
-        Manos Veículos &copy; {new Date().getFullYear()}. Todos os direitos reservados.
+        Todos os direitos reservados a drivvoo &copy; {new Date().getFullYear()}.
       </footer>
     </div>
   );

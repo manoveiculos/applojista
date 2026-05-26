@@ -626,6 +626,10 @@ export default function AlertasPage() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 relative overflow-hidden flex flex-col font-sans">
+      
+      {/* Imagem de Fundo de Veículo Premium */}
+      <div className="absolute inset-0 bg-[url('/images/bg_vehicle.png')] bg-cover bg-center opacity-[0.05] mix-blend-screen pointer-events-none" />
+
       {/* Luzes decorativas de fundo */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-red-950/10 blur-[180px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-zinc-900/10 blur-[180px] pointer-events-none" />
@@ -656,7 +660,7 @@ export default function AlertasPage() {
                   </Link>
                   <span className="text-zinc-800">|</span>
                   <Link href="/facebook" className="text-zinc-400 hover:text-white transition-colors">
-                    Exclusivas Manos
+                    Exclusivas Drivvoo
                   </Link>
                   <span className="text-zinc-800">|</span>
                   <Link href="/alertas" className="text-primary hover:text-primary transition-colors">
@@ -1442,7 +1446,7 @@ export default function AlertasPage() {
 
       {/* Footer */}
       <footer className="mt-auto border-t border-zinc-950 py-6 text-center text-xs text-zinc-650">
-        Manos Veículos &copy; {new Date().getFullYear()}. Todos os direitos reservados.
+        Todos os direitos reservados a drivvoo &copy; {new Date().getFullYear()}.
       </footer>
     </div>
   );

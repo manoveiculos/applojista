@@ -403,6 +403,10 @@ export default function RadarPublicoPage() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 relative overflow-hidden flex flex-col">
+      
+      {/* Imagem de Fundo de Veículo Premium */}
+      <div className="absolute inset-0 bg-[url('/images/bg_vehicle.png')] bg-cover bg-center opacity-[0.04] mix-blend-screen pointer-events-none" />
+
       {/* Luzes decorativas */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-red-950/15 blur-[180px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-zinc-900/10 blur-[180px] pointer-events-none" />

@@ -110,7 +110,7 @@ export default function FacebookPage() {
         }
         setIsAuthenticated(false);
         if (!isInitial) {
-          setAuthError('Chave da equipe Manos incorreta ou não autorizada.');
+          setAuthError('Chave da equipe Drivvoo incorreta ou não autorizada.');
         }
         return false;
       }
@@ -447,7 +447,7 @@ export default function FacebookPage() {
 
           <div className="text-center">
             <h2 className="text-2xl font-black tracking-tight text-white">Acesso Restrito</h2>
-            <p className="text-sm text-zinc-400 mt-2">Esta página contém leads exclusivos da equipe Manos. Insira a chave de acesso para visualizar.</p>
+            <p className="text-sm text-zinc-400 mt-2">Esta página contém leads exclusivos da equipe Drivvoo. Insira a chave de acesso para visualizar.</p>
           </div>
 
           <form 
@@ -527,7 +527,7 @@ export default function FacebookPage() {
             </Link>
             <span className="text-zinc-800">|</span>
             <Link href="/facebook" className="text-primary hover:text-primary transition-colors">
-              Exclusivas Manos
+              Exclusivas Drivvoo
             </Link>
 
             <span className="text-zinc-800">|</span>
@@ -557,9 +557,9 @@ export default function FacebookPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
-              Exclusivas Manos
+              Exclusivas Drivvoo
             </h1>
-            <p className="text-sm text-zinc-400 mt-1">Veículos ofertados por clientes nas campanhas de captação exclusivas Manos.</p>
+            <p className="text-sm text-zinc-400 mt-1">Veículos ofertados por clientes nas campanhas de captação exclusivas Drivvoo.</p>
           </div>
         </div>
 

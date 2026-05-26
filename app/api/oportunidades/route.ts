@@ -194,6 +194,16 @@ function cleanSecrets(text: string): string {
     cleaned = cleaned.replace(regex, '');
   });
   
+  // Ocultar links de grupos de WhatsApp ou conversas sob a LGPD
+  cleaned = cleaned.replace(/(?:chat\.whatsapp\.com|wa\.me|api\.whatsapp\.com)\/[a-zA-Z0-9_-]+/gi, '[Link Omitido - LGPD]');
+  
+  // Ocultar e-mails sob a LGPD
+  cleaned = cleaned.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi, '[E-mail Omitido - LGPD]');
+
+  // Ocultar telefones sob a LGPD (celulares brasileiros de 9 dígitos, com ou sem DDD)
+  // Captura formatos como: (47) 99999-9999, 47 999999999, 99999-9999, 47-99999-9999, etc.
+  cleaned = cleaned.replace(/(?:\(?\d{2}\)?\s?)?9\s?\d{4}[-\s]?\d{4}\b/g, '[Contato Omitido - LGPD]');
+
   cleaned = cleaned
     .replace(/[\u{1F3E6}\u{1F6AA}\u{1F697}\u{1F699}\u{2699}\u{267B}\u{1F4CD}\u{1F527}\u{1F4B5}\u{1F4B0}\u{1F556}\u{1F6DE}\u{1F5E3}\u{2705}]/gu, '')
     .replace(/\*/g, '')

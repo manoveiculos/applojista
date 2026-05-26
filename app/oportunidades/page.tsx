@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   TrendingUp, 
   ArrowLeft, 
@@ -46,21 +47,41 @@ interface Opportunity {
 }
 
 export default function OportunidadesPage() {
+  const router = useRouter();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [clickCount, setClickCount] = useState(0);
+  const [loadingSession, setLoadingSession] = useState(true);
 
   useEffect(() => {
+    const getCookie = (name: string) => {
+      if (typeof document === 'undefined') return null;
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(';').shift();
+      return null;
+    };
+
     const savedKey = localStorage.getItem('vyro_admin_key');
-    if (savedKey === 'manos_intel_secret_key') {
-      setIsAdmin(true);
-    }
     const isUnlocked = localStorage.getItem('vyro_hidden_unlocked') === 'true';
-    setUnlocked(isUnlocked);
-  }, []);
+    const isTeam = savedKey === 'manos_intel_secret_key' || isUnlocked;
+
+    if (isTeam) {
+      setIsAdmin(true);
+      setUnlocked(isUnlocked);
+      setLoadingSession(false);
+    } else {
+      const sessionCookie = getCookie('vyro_public_session');
+      if (sessionCookie) {
+        router.push('/portal/radar');
+      } else {
+        router.push('/portal');
+      }
+    }
+  }, [router]);
 
   const handleLogoClick = async () => {
     const nextCount = clickCount + 1;
@@ -440,6 +461,15 @@ export default function OportunidadesPage() {
       return 'N/A';
     }
   };
+
+  if (loadingSession) {
+    return (
+      <div className="min-h-screen bg-black text-zinc-400 flex flex-col items-center justify-center gap-4">
+        <div className="w-10 h-10 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+        <span className="text-sm font-medium">Verificando acesso...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 relative overflow-hidden flex flex-col">

@@ -75,6 +75,7 @@ export default function Home() {
   const [unlocked, setUnlocked] = useState(false);
   const [clickCount, setClickCount] = useState(0);
   const [isLogged, setIsLogged] = useState(false);
+  const [loadingSession, setLoadingSession] = useState(true);
 
   // Simulador de carros
   const [selectedSimIndex, setSelectedSimIndex] = useState(0);
@@ -93,11 +94,18 @@ export default function Home() {
       setUnlocked(isUnlocked);
 
       const sessionCookie = getCookie('vyro_public_session');
-      setIsLogged(!!sessionCookie || isUnlocked);
+      const logged = !!sessionCookie || isUnlocked;
+      setIsLogged(logged);
+
+      if (!logged) {
+        router.push('/portal');
+      } else {
+        setLoadingSession(false);
+      }
     };
 
     checkUserSession();
-  }, []);
+  }, [router]);
 
   const handleLogoClick = async () => {
     const nextCount = clickCount + 1;
@@ -157,6 +165,15 @@ export default function Home() {
   const strokeWidth = 5;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (activeCar.score / 100) * circumference;
+
+  if (loadingSession) {
+    return (
+      <div className="min-h-screen bg-black text-zinc-400 flex flex-col items-center justify-center gap-4">
+        <div className="w-10 h-10 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+        <span className="text-sm font-medium">Verificando acesso...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col justify-center bg-black text-zinc-100 relative overflow-hidden font-sans">

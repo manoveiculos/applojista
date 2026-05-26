@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 export const dynamic = 'force-dynamic';
 
 // GET: Lista os alertas cadastrados no banco (oculta os marcados com [EXCLUIDO])
-// Restringe por telefone do cliente logado, a menos que seja admin
+// Restringe por telefone do cliente logado, a menos que seja admin, ou retorna de forma anonimizada
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -27,11 +27,8 @@ export async function GET(request: Request) {
       const cleanPhone = phone.replace(/[^\d]/g, '');
       query = query.eq('telefone_cliente', cleanPhone).order('criado_em', { ascending: false });
     } else {
-      // Se não estiver logado nem for admin, retorna lista vazia por segurança (LGPD)
-      return NextResponse.json({
-        success: true,
-        alerts: []
-      });
+      // Público geral (anônimo) visualiza todos os alertas ativos de forma anonimizada (LGPD)
+      query = query.order('criado_em', { ascending: false });
     }
 
     const { data: alerts, error } = await query;
@@ -39,6 +36,19 @@ export async function GET(request: Request) {
     if (error) {
       console.error('[API Alertas] Erro ao buscar alertas no Supabase:', error);
       throw error;
+    }
+
+    // Se for público geral anônimo, aplica anonimização nos dados pessoais antes de retornar
+    if (!isAdmin && !phone) {
+      const anonymizedAlerts = (alerts || []).map((a: any) => ({
+        ...a,
+        nome_cliente: 'Comprador Particular',
+        telefone_cliente: 'Omitido (LGPD)'
+      }));
+      return NextResponse.json({
+        success: true,
+        alerts: anonymizedAlerts
+      });
     }
 
     return NextResponse.json({

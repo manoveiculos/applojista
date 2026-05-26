@@ -22,7 +22,8 @@ import {
   RefreshCw,
   Clock,
   ShieldCheck,
-  LogOut
+  LogOut,
+  Info
 } from 'lucide-react';
 
 interface AlertaCliente {
@@ -67,6 +68,9 @@ export default function AlertasPage() {
   const [userName, setUserName] = useState('');
   const [userPhone, setUserPhone] = useState('');
   const [sessionLoading, setSessionLoading] = useState(true);
+
+  // Controle de exibição do Modal de Login OTP integrado
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Estados do formulário de Login OTP integrado
   const [loginNome, setLoginNome] = useState('');
@@ -157,13 +161,13 @@ export default function AlertasPage() {
         } catch (err) {
           console.error('Falha ao decodificar cookie de sessão em alertas:', err);
           setIsUserLoggedIn(false);
-          setSessionLoading(false);
-          setLoading(false);
+          fetchAlerts(false, ''); // Fallback para anônimo
         }
       } else {
         setIsUserLoggedIn(false);
-        setSessionLoading(false);
-        setLoading(false);
+        setUserName('');
+        setUserPhone('');
+        fetchAlerts(false, ''); // Carrega lista anonimizada
       }
     };
 
@@ -241,6 +245,7 @@ export default function AlertasPage() {
         setAlerts([]);
         setNome('');
         setTelefone('');
+        fetchAlerts(false, ''); // recarrega como anônimo
       }
     } else {
       setClickCount(nextCount);
@@ -345,11 +350,12 @@ export default function AlertasPage() {
       setNome(loginNome.trim());
       setTelefone(loginTelefone);
 
-      // Limpa os campos de login
+      // Limpa os campos de login e fecha modal
       setLoginNome('');
       setLoginTelefone('');
       setLoginOtp('');
       setLoginStep(1);
+      setShowLoginModal(false);
 
       // Carrega os alertas do cliente recém-logado
       fetchAlerts(false, loginTelefone);
@@ -404,13 +410,14 @@ export default function AlertasPage() {
     setAlerts([]);
     setNome('');
     setTelefone('');
+    fetchAlerts(false, ''); // recarrega lista anonimizada
   };
 
   // Filtragem dos alertas com base na busca, marca e status
   const filteredAlerts = alerts.filter(alerta => {
     // Para administradores, a busca pode filtrar pelo nome do cliente ou pelo modelo
-    // Para usuários comuns, a busca filtra apenas pelo modelo já que os alertas são todos dele
-    const matchesSearch = unlocked
+    // Para usuários comuns e anônimos, a busca filtra apenas pelo modelo já que nome está oculto
+    const matchesSearch = (unlocked && !isUserLoggedIn)
       ? (alerta.nome_cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
          alerta.modelo.toLowerCase().includes(searchTerm.toLowerCase()))
       : alerta.modelo.toLowerCase().includes(searchTerm.toLowerCase());
@@ -508,10 +515,17 @@ export default function AlertasPage() {
         throw new Error(data.error || 'Erro ao criar alerta.');
       }
 
-      setAlerts(prev => [data.alert, ...prev]);
+      // Adiciona o alerta criado na listagem atual do cliente (se ele estiver logado)
+      if (unlocked || isUserLoggedIn) {
+        setAlerts(prev => [data.alert, ...prev]);
+      } else {
+        // Se for anônimo, recarrega a lista para mostrar o novo alerta (de forma anonimizada)
+        fetchAlerts(false, '');
+      }
+
       setSuccessMsg('Monitoramento ativado com sucesso! Monitorando 24h por dia.');
       
-      // Limpa os inputs (se for admin; se for usuário comum mantém nome e telefone fixados)
+      // Limpa os inputs (se for admin ou anônimo; se for usuário comum mantém nome e telefone da sessão)
       setModelo('');
       setValorMinimo('');
       setValorMaximo('');
@@ -523,7 +537,7 @@ export default function AlertasPage() {
       setKmMinimo('');
       setKmMaximo('');
 
-      if (unlocked) {
+      if (unlocked || !isUserLoggedIn) {
         setNome('');
         setTelefone('');
       }
@@ -536,7 +550,7 @@ export default function AlertasPage() {
     }
   };
 
-  // Alterna o status ativo do alerta (valida propriedade via telefone)
+  // Alterna o status ativo do alerta
   const handleToggleAlert = async (id: string, currentStatus: boolean) => {
     try {
       const body: any = { id, ativo: !currentStatus };
@@ -563,7 +577,7 @@ export default function AlertasPage() {
     }
   };
 
-  // Remove permanentemente o alerta (valida propriedade via telefone)
+  // Remove permanentemente o alerta
   const handleDeleteAlert = async (id: string) => {
     if (!confirm('Deseja realmente excluir este alerta de monitoramento?')) return;
 
@@ -588,18 +602,6 @@ export default function AlertasPage() {
       console.error('Erro ao excluir alerta:', err);
       alert(err.message || 'Não foi possível remover o alerta.');
     }
-  };
-
-  const formatDisplayPhone = (phone: string) => {
-    if (!phone) return '';
-    const clean = phone.replace(/[^\d]/g, '');
-    if (clean.length === 11) {
-      return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
-    }
-    if (clean.length === 10) {
-      return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
-    }
-    return phone;
   };
 
   return (
@@ -652,7 +654,7 @@ export default function AlertasPage() {
               )}
             </nav>
 
-            {isUserLoggedIn && (
+            {isUserLoggedIn ? (
               <div className="flex items-center gap-3">
                 <div className="hidden sm:flex items-center gap-2 text-xs text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-xl font-medium">
                   {unlocked ? <ShieldCheck className="w-3.5 h-3.5 text-primary" /> : <User className="w-3.5 h-3.5 text-primary" />}
@@ -667,6 +669,14 @@ export default function AlertasPage() {
                   <span className="hidden sm:inline">Sair</span>
                 </button>
               </div>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <User className="w-3.5 h-3.5 text-zinc-400" />
+                <span>Entrar</span>
+              </button>
             )}
           </div>
         </div>
@@ -675,9 +685,9 @@ export default function AlertasPage() {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto px-6 py-10 w-full flex flex-col gap-8 z-10">
         
-        {/* Título da tela */}
+        {/* Título */}
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3 animate-fade-in">
             Configurar Alertas de Compra
           </h1>
           <p className="text-sm text-zinc-400 mt-1">
@@ -685,157 +695,13 @@ export default function AlertasPage() {
           </p>
         </div>
 
-        {/* 1. SEÇÃO DE LOGIN OTP INTEGRADA (Caso não esteja logado de nenhuma forma) */}
         {sessionLoading ? (
           <div className="glass-panel border border-zinc-850 rounded-2xl p-24 flex flex-col items-center justify-center text-center gap-4">
             <div className="w-12 h-12 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
             <span className="text-sm text-zinc-400">Verificando segurança do portal...</span>
           </div>
-        ) : !isUserLoggedIn ? (
-          <section className="max-w-md mx-auto w-full mt-4">
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-bold text-white">Identifique-se para continuar</h2>
-              <p className="text-xs text-zinc-400 mt-1">Respeitamos a LGPD brasileira. Seus alertas são privados e somente você pode visualizá-los.</p>
-            </div>
-
-            <div className="glass-panel border border-zinc-850 rounded-3xl p-8 bg-zinc-950/40 shadow-2xl relative">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-
-              {loginError && (
-                <div className="mb-6 p-4 bg-red-950/20 border border-red-500/20 text-red-400 text-xs rounded-2xl flex items-start gap-2.5">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{loginError}</span>
-                </div>
-              )}
-
-              {loginSuccessMsg && (
-                <div className="mb-6 p-4 bg-emerald-950/20 border border-emerald-500/20 text-emerald-400 text-xs rounded-2xl flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{loginSuccessMsg}</span>
-                </div>
-              )}
-
-              {/* Login OTP Passo 1: Digitar Telefone */}
-              {loginStep === 1 && (
-                <form onSubmit={handleRequestOtp} className="flex flex-col gap-5">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Seu Nome completo</label>
-                    <div className="relative">
-                      <User className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-500" />
-                      <input
-                        type="text"
-                        required
-                        disabled={loginLoading}
-                        placeholder="Ex: João Silveira"
-                        value={loginNome}
-                        onChange={(e) => setLoginNome(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-900 rounded-xl pl-10 pr-4 py-3 text-zinc-200 text-sm focus:outline-none focus:border-zinc-800 transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Seu WhatsApp (com DDD)</label>
-                    <div className="relative">
-                      <Phone className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-500" />
-                      <input
-                        type="text"
-                        required
-                        disabled={loginLoading}
-                        placeholder="Ex: (47) 99999-9999"
-                        value={loginTelefone}
-                        onChange={handleLoginPhoneChange}
-                        className="w-full bg-zinc-950 border border-zinc-900 rounded-xl pl-10 pr-4 py-3 text-zinc-200 text-sm focus:outline-none focus:border-zinc-800 transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loginLoading}
-                    className="w-full mt-2 py-4 px-6 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 group cursor-pointer glow-primary glow-primary-hover disabled:opacity-50"
-                  >
-                    {loginLoading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        Gerando código...
-                      </>
-                    ) : (
-                      <>
-                        Enviar Código de Confirmação
-                        <Sparkles className="w-4 h-4 text-white" />
-                      </>
-                    )}
-                  </button>
-                </form>
-              )}
-
-              {/* Login OTP Passo 2: Confirmar Código */}
-              {loginStep === 2 && (
-                <form onSubmit={handleVerifyOtp} className="flex flex-col gap-6">
-                  <div className="flex flex-col gap-1.5">
-                    <p className="text-xs text-zinc-400 leading-relaxed text-center">
-                      Digitou o código de 4 dígitos enviado para o WhatsApp <strong className="text-zinc-200">{loginTelefone}</strong>.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <div className="relative flex justify-center">
-                      <Key className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-500" />
-                      <input
-                        type="text"
-                        required
-                        maxLength={4}
-                        disabled={loginLoading}
-                        placeholder="0000"
-                        value={loginOtp}
-                        onChange={(e) => setLoginOtp(e.target.value.replace(/[^\d]/g, ''))}
-                        className="w-full bg-zinc-950 border border-zinc-900 rounded-xl py-3.5 px-4 text-center text-lg font-black tracking-[0.75em] text-white focus:outline-none focus:border-zinc-800 transition-colors disabled:opacity-50 placeholder:tracking-normal placeholder:font-normal placeholder:text-zinc-700"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loginLoading}
-                    className="w-full py-4 px-6 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 group cursor-pointer glow-primary glow-primary-hover disabled:opacity-50"
-                  >
-                    {loginLoading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        Validando...
-                      </>
-                    ) : (
-                      <>
-                        Confirmar e Acessar
-                        <CheckCircle2 className="w-4 h-4 text-white" />
-                      </>
-                    )}
-                  </button>
-
-                  <div className="flex flex-col items-center gap-2 mt-2">
-                    <button
-                      type="button"
-                      disabled={loginLoading || resendTimer > 0}
-                      onClick={handleResendOtp}
-                      className="text-xs font-bold text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${loginLoading ? 'animate-spin' : ''}`} />
-                      Reenviar código
-                    </button>
-                    {resendTimer > 0 && (
-                      <span className="text-[10px] text-zinc-500 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        Aguarde {resendTimer}s para solicitar novamente
-                      </span>
-                    )}
-                  </div>
-                </form>
-              )}
-            </div>
-          </section>
         ) : (
-          /* 2. DASHBOARD DE ALERTAS (Se estiver logado / admin) */
+          /* DASHBOARD DE ALERTAS PÚBLICO E LIVRE */
           <>
             {/* Mensagens de feedback do formulário */}
             {error && (
@@ -871,7 +737,7 @@ export default function AlertasPage() {
                     
                     {/* Nome do Cliente */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Nome do Comprador</label>
+                      <label className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Nome do Comprador *</label>
                       <div className="relative">
                         <User className="absolute left-3 top-3.5 w-4 h-4 text-zinc-500" />
                         <input
@@ -880,15 +746,15 @@ export default function AlertasPage() {
                           placeholder="Ex: João Silveira"
                           value={nome}
                           onChange={(e) => setNome(e.target.value)}
-                          disabled={!unlocked} // usuários normais têm seu nome travado pela sessão
-                          className="w-full bg-zinc-950 border border-zinc-900 rounded-xl pl-9 pr-4 py-3 text-zinc-200 text-sm focus:outline-none focus:border-zinc-800 transition-colors disabled:opacity-60 disabled:text-zinc-400 disabled:border-zinc-900/60"
+                          disabled={isUserLoggedIn && !unlocked} // usuários normais logados têm seu nome fixado
+                          className="w-full bg-zinc-950 border border-zinc-900 rounded-xl pl-9 pr-4 py-3 text-zinc-200 text-sm focus:outline-none focus:border-zinc-800 transition-colors disabled:opacity-60 disabled:text-zinc-400"
                         />
                       </div>
                     </div>
 
                     {/* Telefone / WhatsApp */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">WhatsApp Comprador</label>
+                      <label className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">WhatsApp Comprador *</label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-3.5 w-4 h-4 text-zinc-500" />
                         <input
@@ -897,8 +763,8 @@ export default function AlertasPage() {
                           placeholder="Ex: (47) 99999-9999"
                           value={telefone}
                           onChange={handlePhoneChange}
-                          disabled={!unlocked} // usuários normais têm seu telefone travado pela sessão
-                          className="w-full bg-zinc-950 border border-zinc-900 rounded-xl pl-9 pr-4 py-3 text-zinc-200 text-sm focus:outline-none focus:border-zinc-800 transition-colors disabled:opacity-60 disabled:text-zinc-400 disabled:border-zinc-900/60"
+                          disabled={isUserLoggedIn && !unlocked} // usuários normais logados têm seu telefone fixado
+                          className="w-full bg-zinc-950 border border-zinc-900 rounded-xl pl-9 pr-4 py-3 text-zinc-200 text-sm focus:outline-none focus:border-zinc-800 transition-colors disabled:opacity-60 disabled:text-zinc-400"
                         />
                       </div>
                     </div>
@@ -931,7 +797,7 @@ export default function AlertasPage() {
                       />
                     </div>
 
-                    {/* Filtros Avançados */}
+                    {/* Divisor Filtros Avançados */}
                     <div className="flex items-center gap-2 my-1">
                       <div className="h-px bg-zinc-900 flex-1" />
                       <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Filtros Avançados (Opcional)</span>
@@ -1053,7 +919,7 @@ export default function AlertasPage() {
                           />
                         </div>
                       </div>
-                      <span className="text-[9px] text-zinc-500 font-medium mt-0.5">Deixe os campos em branco para monitorar todas as faixas de preço.</span>
+                      <span className="text-[9px] text-zinc-500 font-medium mt-0.5">Deixe os campos vazios para monitorar qualquer valor.</span>
                     </div>
 
                     <button
@@ -1079,10 +945,33 @@ export default function AlertasPage() {
 
               {/* Lado Direito: Listagem (7 colunas) */}
               <section className="lg:col-span-7 flex flex-col gap-5">
+                
+                {/* Banner de Login LGPD (Caso não esteja logado) */}
+                {!isUserLoggedIn && (
+                  <div className="glass-panel border border-zinc-800 bg-zinc-950/40 rounded-2xl p-4 flex justify-between items-center gap-4">
+                    <div className="flex gap-2.5 items-center">
+                      <Info className="w-4 h-4 text-primary shrink-0 animate-pulse-soft" />
+                      <span className="text-[11px] text-zinc-400 leading-normal">
+                        Você está vendo a fila de alertas anonimizada. <strong>Identifique-se</strong> para gerenciar seus alertas de forma privada.
+                      </span>
+                    </div>
+                    <button 
+                      onClick={() => setShowLoginModal(true)}
+                      className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      Entrar
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-white text-lg flex items-center gap-2">
                     <Activity className="w-5 h-5 text-emerald-400 animate-pulse-soft" /> 
-                    {unlocked ? 'Fila de Espera Ativa (Equipe)' : 'Meus Alertas Ativos'}
+                    {unlocked 
+                      ? 'Fila de Espera Ativa (Equipe)' 
+                      : isUserLoggedIn 
+                        ? 'Meus Alertas Ativos' 
+                        : 'Fila de Espera Ativa (Público)'}
                   </h3>
                   <span className="text-xs text-zinc-500 font-medium">
                     {searchTerm || filterBrand !== 'TODAS' || filterStatus !== 'TODOS' ? (
@@ -1096,12 +985,11 @@ export default function AlertasPage() {
                 {/* Barra de Filtros e Busca */}
                 {!loading && alerts.length > 0 && (
                   <div className="glass-panel border border-zinc-900 rounded-2xl p-3.5 flex flex-col sm:flex-row gap-3 items-center bg-zinc-950/20">
-                    {/* Campo de Busca (Somente habilitado/relevante por nome se for admin) */}
                     <div className="relative w-full sm:flex-1">
                       <Search className="absolute left-3 top-3 w-4 h-4 text-zinc-500" />
                       <input
                         type="text"
-                        placeholder={unlocked ? "Buscar comprador ou modelo..." : "Buscar por modelo..."}
+                        placeholder={(unlocked) ? "Buscar comprador ou modelo..." : "Buscar por modelo..."}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full bg-zinc-950 border border-zinc-900 rounded-xl pl-9 pr-9 py-2.5 text-zinc-200 text-xs focus:outline-none focus:border-zinc-800 transition-colors"
@@ -1116,7 +1004,6 @@ export default function AlertasPage() {
                       )}
                     </div>
 
-                    {/* Filtro de Marca */}
                     <div className="relative w-full sm:w-44">
                       <select
                         value={filterBrand}
@@ -1130,7 +1017,6 @@ export default function AlertasPage() {
                       </select>
                     </div>
 
-                    {/* Filtro de Status */}
                     <div className="relative w-full sm:w-36">
                       <select
                         value={filterStatus}
@@ -1177,119 +1063,129 @@ export default function AlertasPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {filteredAlerts.map((alerta) => (
-                      <div 
-                        key={alerta.id}
-                        className={`glass-panel border rounded-2xl p-5 flex flex-col justify-between gap-4 transition-all relative overflow-hidden ${
-                          alerta.ativo 
-                            ? 'border-zinc-850 bg-zinc-900/10' 
-                            : 'border-zinc-900/60 bg-zinc-950/20 opacity-50'
-                        }`}
-                      >
-                        {alerta.ativo && (
-                          <div className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full m-3 animate-pulse" />
-                        )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
+                    {filteredAlerts.map((alerta) => {
+                      const isAnonymized = alerta.telefone_cliente === 'Omitido (LGPD)';
+                      return (
+                        <div 
+                          key={alerta.id}
+                          className={`glass-panel border rounded-2xl p-5 flex flex-col justify-between gap-4 transition-all relative overflow-hidden ${
+                            alerta.ativo 
+                              ? 'border-zinc-850 bg-zinc-900/10' 
+                              : 'border-zinc-900/60 bg-zinc-950/20 opacity-50'
+                          }`}
+                        >
+                          {alerta.ativo && (
+                            <div className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full m-3 animate-pulse" />
+                          )}
 
-                        {/* Detalhes do Alerta */}
-                        <div className="flex flex-col gap-2.5">
-                          <div className="flex justify-between items-start gap-2">
-                            <div>
-                              <span className="font-extrabold text-sm text-white block truncate max-w-[170px]" title={alerta.nome_cliente}>
-                                {unlocked ? alerta.nome_cliente : 'Meu Alerta'}
-                              </span>
-                              {unlocked && (
-                                <span className="text-[10px] text-zinc-500 font-semibold block mt-0.5">
-                                  Tel: {formatDisplayPhone(alerta.telefone_cliente)}
+                          {/* Detalhes do Alerta */}
+                          <div className="flex flex-col gap-2.5">
+                            <div className="flex justify-between items-start gap-2">
+                              <div>
+                                <span className="font-extrabold text-sm text-white block truncate max-w-[170px]" title={alerta.nome_cliente}>
+                                  {alerta.nome_cliente}
                                 </span>
-                              )}
-                            </div>
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded border uppercase border-zinc-800 bg-zinc-900/50 text-zinc-400">
-                              {alerta.marca}
-                            </span>
-                          </div>
-
-                          <div className="h-px bg-zinc-900/60" />
-
-                          <div className="flex flex-col gap-1 text-xs">
-                            <div className="flex justify-between text-zinc-400">
-                              <span>Modelo Desejado:</span>
-                              <span className="text-zinc-200 font-bold capitalize">{alerta.modelo}</span>
-                            </div>
-                            <div className="flex justify-between text-zinc-400">
-                              <span>Faixa de Preço:</span>
-                              <span className="text-emerald-400 font-bold">
-                                {alerta.valor_minimo || alerta.valor_maximo 
-                                  ? `${alerta.valor_minimo ? alerta.valor_minimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'} - ${alerta.valor_maximo ? alerta.valor_maximo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Sem limite'}` 
-                                  : 'Qualquer valor'}
+                                {!isAnonymized && (
+                                  <span className="text-[10px] text-zinc-500 font-semibold block mt-0.5">
+                                    Tel: {formatPhoneNumber(alerta.telefone_cliente)}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded border uppercase border-zinc-800 bg-zinc-900/50 text-zinc-400">
+                                {alerta.marca}
                               </span>
                             </div>
+
+                            <div className="h-px bg-zinc-900/60" />
+
+                            <div className="flex flex-col gap-1 text-xs">
+                              <div className="flex justify-between text-zinc-400">
+                                <span>Modelo Desejado:</span>
+                                <span className="text-zinc-200 font-bold capitalize">{alerta.modelo}</span>
+                              </div>
+                              <div className="flex justify-between text-zinc-400">
+                                <span>Faixa de Preço:</span>
+                                <span className="text-emerald-400 font-bold">
+                                  {alerta.valor_minimo || alerta.valor_maximo 
+                                    ? `${alerta.valor_minimo ? alerta.valor_minimo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'} - ${alerta.valor_maximo ? alerta.valor_maximo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Sem limite'}` 
+                                    : 'Qualquer valor'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Filtros Avançados */}
+                            {(alerta.ano_minimo || alerta.ano_maximo || alerta.km_minimo || alerta.km_maximo || alerta.cor || alerta.cambio || alerta.combustivel) && (
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                {(alerta.ano_minimo || alerta.ano_maximo) && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-zinc-850 bg-zinc-950 text-zinc-450">
+                                    Ano: {alerta.ano_minimo || 'Qualquer'} - {alerta.ano_maximo || 'Qualquer'}
+                                  </span>
+                                )}
+                                {(alerta.km_minimo || alerta.km_maximo) && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-zinc-850 bg-zinc-950 text-zinc-450">
+                                    KM: {alerta.km_minimo !== null ? `${alerta.km_minimo / 1000}k` : '0'} - {alerta.km_maximo !== null ? `${alerta.km_maximo / 1000}k` : 'Qualquer'}
+                                  </span>
+                                )}
+                                {alerta.cor && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-zinc-850 bg-zinc-950 text-zinc-450 capitalize">
+                                    Cor: {alerta.cor}
+                                  </span>
+                                )}
+                                {alerta.cambio && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-zinc-850 bg-primary/10 text-primary uppercase">
+                                    {alerta.cambio === 'AUTOMATICO' ? 'AUT' : 'MAN'}
+                                  </span>
+                                )}
+                                {alerta.combustivel && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-zinc-850 bg-emerald-950/30 text-emerald-400 uppercase">
+                                    {alerta.combustivel}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
 
-                          {/* Filtros Avançados */}
-                          {(alerta.ano_minimo || alerta.ano_maximo || alerta.km_minimo || alerta.km_maximo || alerta.cor || alerta.cambio || alerta.combustivel) && (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {(alerta.ano_minimo || alerta.ano_maximo) && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-zinc-850 bg-zinc-950 text-zinc-450">
-                                  Ano: {alerta.ano_minimo || 'Qualquer'} - {alerta.ano_maximo || 'Qualquer'}
-                                </span>
-                              )}
-                              {(alerta.km_minimo || alerta.km_maximo) && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-zinc-850 bg-zinc-950 text-zinc-450">
-                                  KM: {alerta.km_minimo !== null ? `${alerta.km_minimo / 1000}k` : '0'} - {alerta.km_maximo !== null ? `${alerta.km_maximo / 1000}k` : 'Qualquer'}
-                                </span>
-                              )}
-                              {alerta.cor && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-zinc-850 bg-zinc-950 text-zinc-450 capitalize">
-                                  Cor: {alerta.cor}
-                                </span>
-                              )}
-                              {alerta.cambio && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-zinc-850 bg-primary/10 text-primary uppercase">
-                                  {alerta.cambio === 'AUTOMATICO' ? 'AUT' : 'MAN'}
-                                </span>
-                              )}
-                              {alerta.combustivel && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-zinc-850 bg-emerald-950/30 text-emerald-400 uppercase">
-                                  {alerta.combustivel}
-                                </span>
-                              )}
+                          {/* Botões do Card (Apenas renderizados se o alerta NÃO for anonimizado / pertencer a ele) */}
+                          {!isAnonymized ? (
+                            <div className="flex items-center justify-between border-t border-zinc-900/60 pt-3 mt-1.5 animate-fade-in">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleAlert(alerta.id, alerta.ativo)}
+                                className="inline-flex items-center gap-1.5 text-[10px] font-bold text-zinc-450 hover:text-white transition-colors cursor-pointer border-0 bg-transparent"
+                              >
+                                {alerta.ativo ? (
+                                  <>
+                                    <ToggleRight className="w-5 h-5 text-emerald-400" />
+                                    Ativo
+                                  </>
+                                ) : (
+                                  <>
+                                    <ToggleLeft className="w-5 h-5 text-zinc-650" />
+                                    Inativo
+                                  </>
+                                )}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAlert(alerta.id)}
+                                className="p-1.5 rounded-lg border border-zinc-900 hover:border-red-950 bg-zinc-950 hover:bg-red-950/20 text-zinc-500 hover:text-red-400 transition-all cursor-pointer"
+                                title="Excluir monitoramento"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            // Oferece espaço visual para simetria do card
+                            <div className="pt-3 border-t border-zinc-900/10 text-[9px] font-bold text-zinc-600 uppercase tracking-widest text-right">
+                              Protegido por LGPD
                             </div>
                           )}
+
                         </div>
-
-                        {/* Botões do Card */}
-                        <div className="flex items-center justify-between border-t border-zinc-900/60 pt-3 mt-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleAlert(alerta.id, alerta.ativo)}
-                            className="inline-flex items-center gap-1.5 text-[10px] font-bold text-zinc-450 hover:text-white transition-colors cursor-pointer border-0 bg-transparent"
-                          >
-                            {alerta.ativo ? (
-                              <>
-                                <ToggleRight className="w-5 h-5 text-emerald-400" />
-                                Ativo
-                              </>
-                            ) : (
-                              <>
-                                <ToggleLeft className="w-5 h-5 text-zinc-650" />
-                                Inativo
-                              </>
-                            )}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteAlert(alerta.id)}
-                            className="p-1.5 rounded-lg border border-zinc-900 hover:border-red-950 bg-zinc-950 hover:bg-red-950/20 text-zinc-500 hover:text-red-400 transition-all cursor-pointer"
-                            title="Excluir monitoramento"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </section>
@@ -1299,8 +1195,166 @@ export default function AlertasPage() {
         )}
       </main>
 
+      {/* MODAL DE LOGIN OTP INTEGRADO */}
+      {showLoginModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in p-4"
+          onClick={() => setShowLoginModal(false)}
+        >
+          <div 
+            className="w-full max-w-md bg-zinc-950 border border-zinc-850 rounded-3xl p-8 shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Fechar */}
+            <button 
+              onClick={() => setShowLoginModal(false)}
+              className="absolute top-6 right-6 p-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-850 rounded-xl text-zinc-400 hover:text-white transition-all cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-bold text-white">Identifique seu WhatsApp</h2>
+              <p className="text-xs text-zinc-400 mt-1">Para carregar e gerenciar seus alertas cadastrados de forma segura.</p>
+            </div>
+
+            {loginError && (
+              <div className="mb-6 p-4 bg-red-950/20 border border-red-500/20 text-red-400 text-xs rounded-2xl flex items-start gap-2.5 animate-fade-in">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            {loginSuccessMsg && (
+              <div className="mb-6 p-4 bg-emerald-950/20 border border-emerald-500/20 text-emerald-400 text-xs rounded-2xl flex items-start gap-2.5 animate-fade-in">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{loginSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Login OTP Passo 1: Digitar Telefone */}
+            {loginStep === 1 && (
+              <form onSubmit={handleRequestOtp} className="flex flex-col gap-5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Seu Nome completo</label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-500" />
+                    <input
+                      type="text"
+                      required
+                      disabled={loginLoading}
+                      placeholder="Ex: João Silveira"
+                      value={loginNome}
+                      onChange={(e) => setLoginNome(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-900 rounded-xl pl-10 pr-4 py-3 text-zinc-200 text-sm focus:outline-none focus:border-zinc-800 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Seu WhatsApp (com DDD)</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-500" />
+                    <input
+                      type="text"
+                      required
+                      disabled={loginLoading}
+                      placeholder="Ex: (47) 99999-9999"
+                      value={loginTelefone}
+                      onChange={handleLoginPhoneChange}
+                      className="w-full bg-zinc-950 border border-zinc-900 rounded-xl pl-10 pr-4 py-3 text-zinc-200 text-sm focus:outline-none focus:border-zinc-800 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full mt-2 py-4 px-6 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 group cursor-pointer glow-primary glow-primary-hover disabled:opacity-50"
+                >
+                  {loginLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      Gerando código...
+                    </>
+                  ) : (
+                    <>
+                      Enviar Código de Confirmação
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+
+            {/* Login OTP Passo 2: Confirmar Código */}
+            {loginStep === 2 && (
+              <form onSubmit={handleVerifyOtp} className="flex flex-col gap-6">
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-xs text-zinc-400 leading-relaxed text-center">
+                    Digitou o código de 4 dígitos enviado para o WhatsApp <strong className="text-zinc-200">{loginTelefone}</strong>.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="relative flex justify-center">
+                    <Key className="absolute left-3.5 top-3.5 w-4 h-4 text-zinc-500" />
+                    <input
+                      type="text"
+                      required
+                      maxLength={4}
+                      disabled={loginLoading}
+                      placeholder="0000"
+                      value={loginOtp}
+                      onChange={(e) => setLoginOtp(e.target.value.replace(/[^\d]/g, ''))}
+                      className="w-full bg-zinc-950 border border-zinc-900 rounded-xl py-3.5 px-4 text-center text-lg font-black tracking-[0.75em] text-white focus:outline-none focus:border-zinc-800 transition-colors disabled:opacity-50 placeholder:tracking-normal placeholder:font-normal placeholder:text-zinc-700"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full py-4 px-6 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 group cursor-pointer glow-primary glow-primary-hover disabled:opacity-50"
+                >
+                  {loginLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      Validando...
+                    </>
+                  ) : (
+                    <>
+                      Confirmar e Acessar
+                      <CheckCircle2 className="w-4 h-4 text-white" />
+                    </>
+                  )}
+                </button>
+
+                <div className="flex flex-col items-center gap-2 mt-2">
+                  <button
+                    type="button"
+                    disabled={loginLoading || resendTimer > 0}
+                    onClick={handleResendOtp}
+                    className="text-xs font-bold text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loginLoading ? 'animate-spin' : ''}`} />
+                    Reenviar código
+                  </button>
+                  {resendTimer > 0 && (
+                    <span className="text-[10px] text-zinc-500 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      Aguarde {resendTimer}s para solicitar novamente
+                    </span>
+                  )}
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
-      <footer className="mt-auto border-t border-zinc-950 py-6 text-center text-xs text-zinc-600">
+      <footer className="mt-auto border-t border-zinc-950 py-6 text-center text-xs text-zinc-650">
         Manos Veículos &copy; {new Date().getFullYear()}. Todos os direitos reservados.
       </footer>
     </div>

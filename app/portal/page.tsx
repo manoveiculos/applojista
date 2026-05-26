@@ -13,6 +13,7 @@ import {
   Clock, 
   RefreshCw 
 } from 'lucide-react';
+import { safeFetch } from '@/lib/api-client';
 
 export default function PortalLoginPage() {
   const router = useRouter();
@@ -77,7 +78,7 @@ export default function PortalLoginPage() {
     setSuccessMsg(null);
 
     try {
-      const res = await fetch('/api/auth/enviar-otp', {
+      const data = await safeFetch('/api/auth/enviar-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,12 +88,6 @@ export default function PortalLoginPage() {
           telefone: telefone,
         }),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Erro ao enviar código de confirmação.');
-      }
 
       setSessionHash(data.hash);
       setSessionExpiration(data.expiraEm);
@@ -125,7 +120,7 @@ export default function PortalLoginPage() {
     setSuccessMsg(null);
 
     try {
-      const res = await fetch('/api/auth/validar-otp', {
+      const data = await safeFetch('/api/auth/validar-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -138,12 +133,6 @@ export default function PortalLoginPage() {
           expiraEm: sessionExpiration,
         }),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Código incorreto ou inválido.');
-      }
 
       setSuccessMsg('Autenticação bem-sucedida! Redirecionando...');
       
@@ -168,22 +157,14 @@ export default function PortalLoginPage() {
     setOtp('');
 
     try {
-      const res = await fetch('/api/auth/enviar-otp', {
+      const data = await safeFetch('/api/auth/enviar-otp', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nome: nome.trim(),
           telefone: telefone,
         }),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Erro ao reenviar o código.');
-      }
 
       setSessionHash(data.hash);
       setSessionExpiration(data.expiraEm);

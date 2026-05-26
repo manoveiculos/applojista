@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { safeFetch } from '@/lib/api-client';
 import { 
   TrendingUp, 
   Search, 
@@ -22,7 +23,10 @@ import {
   Trash2,
   X,
   LogOut,
-  User
+  User,
+  Sparkles,
+  ArrowRight,
+  Bell
 } from 'lucide-react';
 
 interface Opportunity {
@@ -126,12 +130,7 @@ export default function RadarPublicoPage() {
   useEffect(() => {
     async function fetchOpportunities() {
       try {
-        const res = await fetch('/api/oportunidades?limit=150');
-        const data = await res.json();
-        
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Erro ao carregar oportunidades de repasse.');
-        }
+        const data = await safeFetch('/api/oportunidades?limit=150');
 
         setOpportunities(data.opportunities || []);
         setDbStats({
@@ -214,7 +213,7 @@ export default function RadarPublicoPage() {
       const formattedFipe = refFipe.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
       const formattedAsk = selectedOppForInterest.ask_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
-      const res = await fetch('/api/oportunidades/interesse', {
+      const data = await safeFetch('/api/oportunidades/interesse', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -231,8 +230,7 @@ export default function RadarPublicoPage() {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
+      if (!data.success) {
         throw new Error(data.error || 'Erro ao enviar interesse.');
       }
 
@@ -420,7 +418,7 @@ export default function RadarPublicoPage() {
             </div>
             
             {/* Navegação Pública (Apenas Radar e Alertas de Compra) */}
-            <nav className="hidden md:flex items-center gap-4 text-xs font-bold ml-4">
+            <nav className="flex items-center gap-3 sm:gap-4 text-[11px] sm:text-xs font-bold ml-3 sm:ml-4">
               <Link href="/portal/radar" className="text-primary transition-colors">
                 Radar
               </Link>
@@ -460,6 +458,36 @@ export default function RadarPublicoPage() {
             </h1>
             <p className="text-sm text-zinc-400 mt-1">Oportunidades de repasse avaliadas e prontas para negociação.</p>
           </div>
+          
+          <Link 
+            href="/alertas" 
+            className="w-full md:w-auto px-5 py-3.5 bg-primary hover:bg-primary/95 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg glow-primary glow-primary-hover shrink-0"
+          >
+            <Bell className="w-4 h-4" />
+            Configurar Alertas de Compra
+          </Link>
+        </div>
+
+        {/* Banner de Explicação dos Alertas de Compra */}
+        <div className="glass-panel border border-primary/20 bg-primary/5 rounded-2xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="flex-1">
+            <h3 className="font-extrabold text-white text-base md:text-lg flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+              Não encontrou o veículo que procura no Radar?
+            </h3>
+            <p className="text-xs text-zinc-400 mt-1.5 max-w-3xl leading-relaxed">
+              Cadastre um <strong>Alerta de Compra</strong>! Nosso sistema monitora grupos de repasse de WhatsApp 24 horas por dia. 
+              Quando identificarmos o veículo desejado anunciado, <strong>nossa Inteligência Artificial entrará em contato com você via WhatsApp notificando-o imediatamente</strong>.
+            </p>
+          </div>
+          <Link 
+            href="/alertas" 
+            className="w-full md:w-auto px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 hover:text-white font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            Entenda como funciona
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
 
         {/* KPI Cards / Estatísticas Superiores */}

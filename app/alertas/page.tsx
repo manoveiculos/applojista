@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { safeFetch } from '@/lib/api-client';
 import { 
   ArrowLeft, 
   Sparkles,
@@ -113,6 +114,9 @@ export default function AlertasPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Alerta pendente antes da autenticação
+  const [pendingAlert, setPendingAlert] = useState<any>(null);
+
   // Timer de reenvio de OTP
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -185,11 +189,7 @@ export default function AlertasPage() {
       } else if (phoneNum) {
         url += `?phone=${encodeURIComponent(phoneNum.replace(/[^\d]/g, ''))}`;
       }
-      const res = await fetch(url);
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Erro ao carregar os alertas.');
-      }
+      const data = await safeFetch(url);
       setAlerts(data.alerts || []);
     } catch (err: any) {
       console.warn('[Fetch Alerts Warning]', err);
@@ -218,20 +218,16 @@ export default function AlertasPage() {
             fetchAlerts(true, '');
           } else {
             try {
-              const res = await fetch(`/api/facebook?admin_key=${encodeURIComponent(cleanPassword)}`);
-              if (res.ok) {
-                localStorage.setItem('vyro_hidden_unlocked', 'true');
-                localStorage.setItem('vyro_admin_key', cleanPassword);
-                setUnlocked(true);
-                setIsUserLoggedIn(true);
-                setUserName('Equipe Manos');
-                setUserPhone('00000000000');
-                fetchAlerts(true, '');
-              } else {
-                alert('Senha incorreta!');
-              }
+              await safeFetch(`/api/facebook?admin_key=${encodeURIComponent(cleanPassword)}`);
+              localStorage.setItem('vyro_hidden_unlocked', 'true');
+              localStorage.setItem('vyro_admin_key', cleanPassword);
+              setUnlocked(true);
+              setIsUserLoggedIn(true);
+              setUserName('Equipe Manos');
+              setUserPhone('00000000000');
+              fetchAlerts(true, '');
             } catch (err) {
-              alert('Erro de conexão ao validar a senha.');
+              alert('Senha incorreta ou erro de conexão com o servidor.');
             }
           }
         }
@@ -282,7 +278,7 @@ export default function AlertasPage() {
     setLoginSuccessMsg(null);
 
     try {
-      const res = await fetch('/api/auth/enviar-otp', {
+      const data = await safeFetch('/api/auth/enviar-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -290,11 +286,6 @@ export default function AlertasPage() {
           telefone: loginTelefone,
         }),
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Erro ao enviar código.');
-      }
 
       setLoginHash(data.hash);
       setLoginExp(data.expiraEm);
@@ -324,7 +315,7 @@ export default function AlertasPage() {
     setLoginSuccessMsg(null);
 
     try {
-      const res = await fetch('/api/auth/validar-otp', {
+      const data = await safeFetch('/api/auth/validar-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -335,11 +326,6 @@ export default function AlertasPage() {
           expiraEm: loginExp,
         }),
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Código inválido ou expirado.');
-      }
 
       setLoginSuccessMsg('Acesso autorizado com sucesso!');
       
@@ -357,8 +343,42 @@ export default function AlertasPage() {
       setLoginStep(1);
       setShowLoginModal(false);
 
-      // Carrega os alertas do cliente recém-logado
-      fetchAlerts(false, loginTelefone);
+      // Se havia um alerta pendente, submete ele agora usando o nome e telefone logados!
+      if (pendingAlert) {
+        try {
+          const alertData = await safeFetch('/api/alertas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...pendingAlert,
+              nome_cliente: loginNome.trim(),
+              telefone_cliente: loginTelefone
+            })
+          });
+          setAlerts(prev => [alertData.alert, ...prev]);
+          setSuccessMsg('Monitoramento ativado com sucesso! Monitorando 24h por dia.');
+          setTimeout(() => setSuccessMsg(null), 4000);
+          
+          // Limpa formulário
+          setModelo('');
+          setValorMinimo('');
+          setValorMaximo('');
+          setAnoMinimo('');
+          setAnoMaximo('');
+          setCor('');
+          setCambio('');
+          setCombustivel('');
+          setKmMinimo('');
+          setKmMaximo('');
+        } catch (alertErr: any) {
+          setError(alertErr.message || 'Falha ao salvar o alerta após a validação.');
+        } finally {
+          setPendingAlert(null);
+        }
+      } else {
+        // Se não havia alerta pendente, apenas carrega a lista do telefone logado
+        fetchAlerts(false, loginTelefone);
+      }
     } catch (err: any) {
       setLoginError(err.message || 'Falha ao validar o código.');
     } finally {
@@ -374,7 +394,7 @@ export default function AlertasPage() {
     setLoginOtp('');
 
     try {
-      const res = await fetch('/api/auth/enviar-otp', {
+      const data = await safeFetch('/api/auth/enviar-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -382,11 +402,6 @@ export default function AlertasPage() {
           telefone: loginTelefone,
         }),
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Erro ao reenviar o código.');
-      }
 
       setLoginHash(data.hash);
       setLoginExp(data.expiraEm);
@@ -489,31 +504,44 @@ export default function AlertasPage() {
     const valorMinNum = parseCurrency(valorMinimo);
     const valorMaxNum = parseCurrency(valorMaximo);
 
+    const alertDetails = {
+      nome_cliente: nome,
+      telefone_cliente: telefone,
+      marca,
+      modelo,
+      valor_minimo: valorMinNum,
+      valor_maximo: valorMaxNum,
+      ano_minimo: anoMinimo ? Number(anoMinimo) : null,
+      ano_maximo: anoMaximo ? Number(anoMaximo) : null,
+      cor,
+      cambio,
+      combustivel,
+      km_minimo: kmMinimo ? Number(kmMinimo) : null,
+      km_maximo: kmMaximo ? Number(kmMaximo) : null
+    };
+
+    // Se o usuário não estiver autenticado nem for admin, exige autenticação OTP antes de salvar
+    if (!isUserLoggedIn && !unlocked) {
+      setPendingAlert(alertDetails);
+      setLoginNome(nome);
+      setLoginTelefone(telefone);
+      setLoginError(null);
+      setLoginSuccessMsg(null);
+      setLoginStep(1);
+      setShowLoginModal(true);
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    setSuccessMsg(null);
+
     try {
-      const res = await fetch('/api/alertas', {
+      const data = await safeFetch('/api/alertas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome_cliente: nome,
-          telefone_cliente: telefone,
-          marca,
-          modelo,
-          valor_minimo: valorMinNum,
-          valor_maximo: valorMaxNum,
-          ano_minimo: anoMinimo ? Number(anoMinimo) : null,
-          ano_maximo: anoMaximo ? Number(anoMaximo) : null,
-          cor,
-          cambio,
-          combustivel,
-          km_minimo: kmMinimo ? Number(kmMinimo) : null,
-          km_maximo: kmMaximo ? Number(kmMaximo) : null
-        })
+        body: JSON.stringify(alertDetails)
       });
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Erro ao criar alerta.');
-      }
 
       // Adiciona o alerta criado na listagem atual do cliente (se ele estiver logado)
       if (unlocked || isUserLoggedIn) {
@@ -560,15 +588,11 @@ export default function AlertasPage() {
         body.phone = userPhone;
       }
 
-      const res = await fetch('/api/alertas', {
+      const data = await safeFetch('/api/alertas', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Falha ao atualizar alerta.');
-      }
 
       setAlerts(prev => prev.map(a => a.id === id ? data.alert : a));
     } catch (err: any) {
@@ -589,13 +613,9 @@ export default function AlertasPage() {
         url += `&phone=${encodeURIComponent(userPhone)}`;
       }
 
-      const res = await fetch(url, {
+      await safeFetch(url, {
         method: 'DELETE'
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Erro ao remover alerta.');
-      }
 
       setAlerts(prev => prev.filter(a => a.id !== id));
     } catch (err: any) {
@@ -628,7 +648,7 @@ export default function AlertasPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <nav className="hidden md:flex items-center gap-3 md:gap-5 text-[11px] md:text-xs font-bold mr-2">
+            <nav className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs font-bold mr-1 sm:mr-2">
               {unlocked ? (
                 <>
                   <Link href="/oportunidades" className="text-zinc-400 hover:text-white transition-colors">
@@ -781,17 +801,18 @@ export default function AlertasPage() {
 
                     {/* Marca */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Marca Desejada</label>
-                      <div className="relative">
-                        <Car className="absolute left-3 top-3.5 w-4 h-4 text-zinc-500" />
-                        <input
-                          type="text"
-                          placeholder="Ex: Volkswagen, Fiat, Honda..."
-                          value={marca}
-                          onChange={(e) => setMarca(e.target.value)}
-                          className="w-full bg-zinc-950 border border-zinc-900 rounded-xl pl-9 pr-4 py-3 text-zinc-200 text-sm focus:outline-none focus:border-zinc-800 transition-colors"
-                        />
-                      </div>
+                      <label className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Marca Desejada *</label>
+                      <select
+                        required
+                        value={marca}
+                        onChange={(e) => setMarca(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-900 rounded-xl px-3.5 py-3 text-zinc-200 text-sm font-semibold focus:outline-none focus:border-zinc-800 transition-colors cursor-pointer appearance-none"
+                      >
+                        <option value="" disabled>Selecione uma marca...</option>
+                        {BRANDS.map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
                     </div>
 
                     {/* Modelo Desejado */}
@@ -993,7 +1014,7 @@ export default function AlertasPage() {
                 </div>
 
                 {/* Barra de Filtros e Busca */}
-                {!loading && alerts.length > 0 && (
+                {!loading && (isUserLoggedIn || unlocked) && alerts.length > 0 && (
                   <div className="glass-panel border border-zinc-900 rounded-2xl p-3.5 flex flex-col sm:flex-row gap-3 items-center bg-zinc-950/20">
                     <div className="relative w-full sm:flex-1">
                       <Search className="absolute left-3 top-3 w-4 h-4 text-zinc-500" />
@@ -1045,6 +1066,62 @@ export default function AlertasPage() {
                   <div className="glass-panel border border-zinc-900 rounded-2xl p-16 flex flex-col items-center justify-center text-center gap-4">
                     <div className="w-12 h-12 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
                     <span className="text-sm text-zinc-400">Carregando fila de monitoramento...</span>
+                  </div>
+                ) : !isUserLoggedIn && !unlocked ? (
+                  /* Banner informativo premium para usuários não logados */
+                  <div className="glass-panel border border-zinc-850 bg-zinc-950/20 rounded-3xl p-6 md:p-8 flex flex-col gap-6">
+                    <div className="flex flex-col gap-2">
+                      <h4 className="font-extrabold text-white text-base md:text-lg flex items-center gap-2">
+                        <Bell className="w-5 h-5 text-primary" />
+                        Como funciona o Monitoramento?
+                      </h4>
+                      <p className="text-xs text-zinc-400 leading-relaxed mt-1">
+                        Nosso sistema analisa de forma contínua as ofertas de repasse publicadas em grupos do WhatsApp 24 horas por dia.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="p-4 bg-zinc-900/20 border border-zinc-900 rounded-2xl flex flex-col gap-2">
+                        <span className="text-primary font-bold text-xs uppercase tracking-wider">1. Cadastre o veículo</span>
+                        <p className="text-[11px] text-zinc-500 leading-relaxed">
+                          Defina a marca, modelo, ano, km e faixa de preço desejados no formulário.
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-zinc-900/20 border border-zinc-900 rounded-2xl flex flex-col gap-2">
+                        <span className="text-emerald-400 font-bold text-xs uppercase tracking-wider">2. Rastreamento por IA</span>
+                        <p className="text-[11px] text-zinc-500 leading-relaxed">
+                          Nossa Inteligência Artificial lerá cada anúncio e calculará se o preço está abaixo da FIPE oficial.
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-zinc-900/20 border border-zinc-900 rounded-2xl flex flex-col gap-2">
+                        <span className="text-blue-400 font-bold text-xs uppercase tracking-wider">3. Alerta no WhatsApp</span>
+                        <p className="text-[11px] text-zinc-500 leading-relaxed">
+                          Assim que o veículo correspondente for postado, nós te enviaremos um alerta com os dados do repasse.
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-zinc-900/20 border border-zinc-900 rounded-2xl flex flex-col gap-2">
+                        <span className="text-amber-400 font-bold text-xs uppercase tracking-wider">4. Totalmente Seguro</span>
+                        <p className="text-[11px] text-zinc-500 leading-relaxed">
+                          Seus dados pessoais são protegidos por criptografia e você pode desativar o monitoramento a qualquer momento.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-2">
+                      <span className="text-[11px] text-zinc-400 leading-relaxed">
+                        Já possui alertas cadastrados? Identifique seu WhatsApp para gerenciar e visualizar seus monitoramentos.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowLoginModal(true)}
+                        className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold text-xs transition-all cursor-pointer whitespace-nowrap self-stretch sm:self-auto text-center"
+                      >
+                        Acessar meus alertas
+                      </button>
+                    </div>
                   </div>
                 ) : alerts.length === 0 ? (
                   <div className="glass-panel border border-zinc-900 border-dashed rounded-2xl p-16 flex flex-col items-center justify-center text-center gap-4 bg-zinc-950/10">

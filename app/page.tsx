@@ -206,7 +206,7 @@ export default function Home() {
         </div>
 
         {/* BOTOES DE AÇÃO PRINCIPAIS (Caminhos estruturados e seguros) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-5xl">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${unlocked ? 'lg:grid-cols-4' : 'lg:grid-cols-2 max-w-2xl'} gap-4 w-full max-w-5xl`}>
           
           <button 
             onClick={handleRadarClick}
@@ -232,28 +232,32 @@ export default function Home() {
             </div>
           </Link>
 
-          <Link 
-            href="/facebook"
-            className="py-5 px-4 rounded-2xl bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-white font-bold text-sm transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer text-center relative overflow-hidden shadow-lg shadow-black/40"
-          >
-            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full blur-xl pointer-events-none" />
-            <Lock className="w-6 h-6 text-blue-400 group-hover:scale-110 transition-transform" />
-            <div>
-              <span className="block text-white text-sm font-extrabold">Exclusivas Manos</span>
-              <span className="block text-[10px] text-zinc-500 font-medium mt-0.5">Captações diretas de clientes (Equipe)</span>
-            </div>
-          </Link>
+          {unlocked && (
+            <>
+              <Link 
+                href="/facebook"
+                className="py-5 px-4 rounded-2xl bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-white font-bold text-sm transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer text-center relative overflow-hidden shadow-lg shadow-black/40"
+              >
+                <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full blur-xl pointer-events-none" />
+                <Lock className="w-6 h-6 text-blue-400 group-hover:scale-110 transition-transform" />
+                <div>
+                  <span className="block text-white text-sm font-extrabold">Exclusivas Manos</span>
+                  <span className="block text-[10px] text-zinc-500 font-medium mt-0.5">Captações diretas de clientes (Equipe)</span>
+                </div>
+              </Link>
 
-          <Link 
-            href="/avaliacao"
-            className="py-5 px-4 rounded-2xl bg-primary hover:bg-primary/95 text-white font-bold text-sm transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer text-center shadow-lg glow-primary glow-primary-hover relative overflow-hidden"
-          >
-            <Calculator className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
-            <div>
-              <span className="block text-white text-sm font-extrabold">Calculadora FIPE</span>
-              <span className="block text-[10px] text-red-100 font-semibold mt-0.5">Avaliação rápida por km e estado</span>
-            </div>
-          </Link>
+              <Link 
+                href="/avaliacao"
+                className="py-5 px-4 rounded-2xl bg-primary hover:bg-primary/95 text-white font-bold text-sm transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer text-center shadow-lg glow-primary glow-primary-hover relative overflow-hidden"
+              >
+                <Calculator className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
+                <div>
+                  <span className="block text-white text-sm font-extrabold">Calculadora FIPE</span>
+                  <span className="block text-[10px] text-red-100 font-semibold mt-0.5">Avaliação rápida por km e estado</span>
+                </div>
+              </Link>
+            </>
+          )}
 
         </div>
 

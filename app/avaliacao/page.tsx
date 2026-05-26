@@ -64,11 +64,13 @@ export default function AvaliacaoPage() {
     const isUnlocked = localStorage.getItem('vyro_hidden_unlocked') === 'true';
     setUnlocked(isUnlocked);
 
-    const sessionCookie = getCookie('vyro_public_session');
-    const logged = !!sessionCookie || isUnlocked;
-
-    if (!logged) {
-      router.push('/portal');
+    if (!isUnlocked) {
+      const sessionCookie = getCookie('vyro_public_session');
+      if (sessionCookie) {
+        router.push('/portal/radar');
+      } else {
+        router.push('/portal');
+      }
     } else {
       setLoadingSession(false);
     }

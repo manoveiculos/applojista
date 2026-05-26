@@ -629,26 +629,36 @@ export default function AlertasPage() {
 
           <div className="flex items-center gap-4">
             <nav className="hidden md:flex items-center gap-3 md:gap-5 text-[11px] md:text-xs font-bold mr-2">
-              <Link href="/oportunidades" className="text-zinc-400 hover:text-white transition-colors">
-                Radar 24hrs
-              </Link>
-              <span className="text-zinc-800">|</span>
-              <Link href="/facebook" className="text-zinc-400 hover:text-white transition-colors">
-                Exclusivas Manos
-              </Link>
-              <span className="text-zinc-800">|</span>
-              <Link href="/alertas" className="text-primary hover:text-primary transition-colors">
-                Configurar Alertas
-              </Link>
-              <span className="text-zinc-800">|</span>
-              <Link href="/avaliacao" className="text-zinc-400 hover:text-white transition-colors">
-                Calculadora
-              </Link>
-              {unlocked && (
+              {unlocked ? (
                 <>
+                  <Link href="/oportunidades" className="text-zinc-400 hover:text-white transition-colors">
+                    Radar 24hrs
+                  </Link>
+                  <span className="text-zinc-800">|</span>
+                  <Link href="/facebook" className="text-zinc-400 hover:text-white transition-colors">
+                    Exclusivas Manos
+                  </Link>
+                  <span className="text-zinc-800">|</span>
+                  <Link href="/alertas" className="text-primary hover:text-primary transition-colors">
+                    Configurar Alertas
+                  </Link>
+                  <span className="text-zinc-800">|</span>
+                  <Link href="/avaliacao" className="text-zinc-400 hover:text-white transition-colors">
+                    Calculadora
+                  </Link>
                   <span className="text-zinc-800">|</span>
                   <Link href="/admin" className="text-zinc-400 hover:text-red-400 transition-colors">
                     Admin
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href={isUserLoggedIn ? "/portal/radar" : "/portal"} className="text-zinc-400 hover:text-white transition-colors">
+                    Radar
+                  </Link>
+                  <span className="text-zinc-800">|</span>
+                  <Link href="/alertas" className="text-primary hover:text-primary transition-colors">
+                    Alertas de Compra
                   </Link>
                 </>
               )}

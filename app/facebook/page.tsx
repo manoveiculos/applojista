@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, 
   Search, 
@@ -66,6 +67,7 @@ interface FacebookLead {
 }
 
 export default function FacebookPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<FacebookLead[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,6 +143,26 @@ export default function FacebookPage() {
   };
 
   useEffect(() => {
+    const isUnlocked = localStorage.getItem('vyro_hidden_unlocked') === 'true';
+    setUnlocked(isUnlocked);
+
+    if (!isUnlocked) {
+      const getCookie = (name: string) => {
+        if (typeof document === 'undefined') return null;
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift();
+        return null;
+      };
+      const sessionCookie = getCookie('vyro_public_session');
+      if (sessionCookie) {
+        router.push('/portal/radar');
+      } else {
+        router.push('/portal');
+      }
+      return;
+    }
+
     const savedKey = localStorage.getItem('vyro_admin_key') || '';
     if (savedKey) {
       checkAuthAndLoad(savedKey, true);
@@ -148,10 +170,7 @@ export default function FacebookPage() {
       setAuthChecking(false);
       setLoading(false);
     }
-
-    const isUnlocked = localStorage.getItem('vyro_hidden_unlocked') === 'true';
-    setUnlocked(isUnlocked);
-  }, []);
+  }, [router]);
 
   const handleLogoClick = async () => {
     const nextCount = clickCount + 1;

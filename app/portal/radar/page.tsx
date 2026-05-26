@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { 
   TrendingUp, 
   Search, 
@@ -411,10 +412,23 @@ export default function RadarPublicoPage() {
       {/* Header Público Minimalista */}
       <header className="border-b border-zinc-900 bg-black/60 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 select-none">
-            <span className="text-xl font-black tracking-tight text-white">
-              vyro<span className="text-primary px-1.5 py-0.5 bg-primary/10 border border-primary/20 rounded-lg ml-0.5 text-xs font-bold uppercase">portal</span>
-            </span>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 select-none">
+              <span className="text-xl font-black tracking-tight text-white">
+                vyro<span className="text-primary px-1.5 py-0.5 bg-primary/10 border border-primary/20 rounded-lg ml-0.5 text-xs font-bold uppercase">portal</span>
+              </span>
+            </div>
+            
+            {/* Navegação Pública (Apenas Radar e Alertas de Compra) */}
+            <nav className="hidden md:flex items-center gap-4 text-xs font-bold ml-4">
+              <Link href="/portal/radar" className="text-primary transition-colors">
+                Radar
+              </Link>
+              <span className="text-zinc-800">|</span>
+              <Link href="/alertas" className="text-zinc-400 hover:text-white transition-colors">
+                Alertas de Compra
+              </Link>
+            </nav>
           </div>
 
           <div className="flex items-center gap-4">
